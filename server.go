@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	//"time"
 	"strings"
 )
 
@@ -43,9 +44,10 @@ func insertAddress(clients *typeBAddresses, targetClient *net.UDPAddr){
 		fmt.Println("Client:", targetClient.IP.String() , " already connected ")
 		return
 	}else{
-	//	clients.lock= true
+		for clients.lock { } //Don't writing while removing
+		clients.lock= true
 		clients.addrSlice = append(clients.addrSlice, targetClient)
-	//	clients.lock=false
+		clients.lock=false
 		fmt.Println("Inserted client:", targetClient.IP.String() ," to list ")
 	}
 }
@@ -55,9 +57,10 @@ func removeAddress(clients *typeBAddresses, targetClient *net.UDPAddr){
 	var i int = findClientIndex(clients, targetClient)
 
     if i != -1 {
-		//clients.lock= true
+    	for clients.lock { } //Don't remove while writing
+		clients.lock= true
         clients.addrSlice = append(clients.addrSlice[:i], clients.addrSlice[i+1:]...)
-      //  clients.lock=false
+      	clients.lock=false
         fmt.Println("Removed client:", targetClient.IP.String() ," from list ")
         return
     }
@@ -99,10 +102,8 @@ func typeAHandler(clients *typeBAddresses){
 
 			//debug: fmt.Println("recv: ", n, "bytes ","from ", singleClient.IP.String())
 
-			//if clients.addrSlice != nil && !clients.lock{
-			if clients.addrSlice != nil{
+			if clients.addrSlice != nil && !clients.lock{
 				for i := range clients.addrSlice {
-				//	if strings.Compare(clients.addrSlice[i].IP.String(), "192.168.1.19") == 0 { fmt.Println("serverConnA.WriteToUDP, clientB.addr:", clients.addrSlice[i].IP.String()) }
 					serverConnA.WriteToUDP(buf[0:n], clients.addrSlice[i])
 				}
 			}
@@ -130,7 +131,7 @@ func typeBHandler(clients *typeBAddresses){
 
 			buf := make([]byte, 1024)
 			n, addr, err := serverConnB.ReadFromUDP(buf)
-			
+
 			//debug: fmt.Println("recv: ",string(buf[0:n]) ,n, "bytes ","from ", addr)
 
 			if(strings.Compare(string(buf[0:n]),"CONNECT") == 0 ){
@@ -141,9 +142,9 @@ func typeBHandler(clients *typeBAddresses){
 			if err != nil {
 				fmt.Println("Error: ", err)
 			}
-		
+
 		}
-	}()	
+	}()
 }
 
 func main() {
